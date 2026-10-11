@@ -1,0 +1,26 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: vibes, POSTGRES_PASSWORD: vibes, POSTGRES_DB: vibes_ai }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://vibes:vibes@localhost:5432/vibes_ai
+      SESSION_SECRET: ci-only-secret-ci-only-secret-0123456789
+      FLEXIVI_MODE: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run db:migrate && npm run db:seed && npm run db:seed:demo
+      - run: npm test
+      - run: npm run build
